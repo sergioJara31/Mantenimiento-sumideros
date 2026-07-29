@@ -114,7 +114,7 @@ def normalizar_barrio(barrio):
         if unicodedata.category(c) != "Mn"
     )
 
-def crear_excel(resultado_formulario, session):
+def crear_excel(resultado_formulario, session, carpetaSeleccionada):
     df = pd.DataFrame(resultado_formulario)
     archivo_excel = "Mantenimiento.xlsx"
     columnas = [
@@ -143,12 +143,12 @@ def crear_excel(resultado_formulario, session):
 
     carpeta_semestre = f"Mantenimiento_Sumideros_{año}_{periodo}"
 
-    os.makedirs(carpeta_semestre, exist_ok=True)
+    rutaCarpeta= os.path.join(carpetaSeleccionada, carpeta_semestre)
 
-    carpeta_fotos = os.path.join(carpeta_semestre, "Fotos")
+    carpeta_fotos = os.path.join(rutaCarpeta, "Fotos")
     os.makedirs(carpeta_fotos, exist_ok=True)
 
-    archivo_excel = os.path.join(carpeta_semestre, "Mantenimiento.xlsx")
+    archivo_excel = os.path.join(rutaCarpeta, "Mantenimiento.xlsx")
     with pd.ExcelWriter(
     archivo_excel,
     engine="openpyxl") as writer:
@@ -326,96 +326,6 @@ def formatear_excel(archivo_excel):
 
     wb.save(archivo_excel)
 
-""" def insertar_imagenes(archivo_excel, resultado_formulario, carpeta_fotos):
-    wb = load_workbook(archivo_excel)
-
-    barrios= defaultdict(list)
-
-    for registro in resultado_formulario:
-        barrios[normalizar_barrio(registro["BARRIO"])].append(registro)
-
-    for barrio, registros in barrios.items():
-        ws = wb[str(barrio)[:31]]
-
-        col_antes = ws.max_column - 1
-        col_despues = ws.max_column 
-
-        for fila, registro in enumerate(registros,start=7):
-
-            barrio = registro["BARRIO"]
-
-            id_elemento = registro["ID_ELEMENTO"]
-
-            if  id_elemento == "" or id_elemento is None:
-                id_elemento = registro["DIRECCIÓN"]
-
-            ruta_antes = os.path.join(
-                carpeta_fotos,
-                barrio,
-                f"{id_elemento}_antes.jpg"
-            )
-
-            ruta_despues = os.path.join(
-                carpeta_fotos,
-                barrio,
-                f"{id_elemento}_despues.jpg"
-            )
-
-            #ws.row_dimensions[fila].height = 90
-
-            if os.path.exists(ruta_antes):
-
-                img = Image(ruta_antes)
-
-                img.width = 80
-                img.height = 150
-
-                ws.add_image(
-                    img,
-                    f"{get_column_letter(col_antes)}{fila}"
-                )
-                
-
-            if os.path.exists(ruta_despues):
-
-                img = Image(ruta_despues)
-
-                img.width = 80
-                img.height = 150
-
-                ws.add_image(
-                    img,
-                    f"{get_column_letter(col_despues)}{fila}"
-                )
-         # AJUSTAR ANCHOS
-        for col in ws.columns:
-
-            letra = get_column_letter(col[0].column)
-            if letra in [
-                get_column_letter(col_antes),
-                get_column_letter(col_despues)
-            ]:
-
-                ws.column_dimensions[letra].width = 20
-
-            else:
-
-                longitud = max(
-                    len(str(c.value)) if c.value else 0
-                    for c in col
-                )
-
-                ws.column_dimensions[letra].width = min(longitud+3,25)
-
-    wb.save(archivo_excel)
- """
-
-
-
-
-
-
-
 def insertar_imagenes(archivo_excel, resultado_formulario, carpeta_fotos):
 
     wb = load_workbook(archivo_excel)
@@ -461,8 +371,6 @@ def obtener_columnas_imagenes(ws):
     col_despues = ws.max_column
 
     return col_antes, col_despues
-
-
 
 def obtener_rutas_imagenes(registro, carpeta_fotos):
 
@@ -531,7 +439,6 @@ def insertar_imagen(ws, ruta, fila, columna):
 
     ws.add_image(img)
 
-
 def centrar_imagen(ws, img, fila, columna):
 
     ancho_columna_px = 140
@@ -585,19 +492,9 @@ def ajustar_anchos_columnas(
             )
 
 
-def proceso():
-    session= crear_sesion()
-    uid = obtener_uid(session)
-
-    datos = obtener_formulario(session, uid)
-
-    resultado = procesar_datos(datos)
-
-    crear_excel(resultado, session)
 
 
-
-""" def proceso():
+def proceso(rutaCarpeta):
     try:
         session = crear_sesion()
         uid = obtener_uid(session)
@@ -606,11 +503,11 @@ def proceso():
 
         resultado = procesar_datos(datos)
 
-        crear_excel(resultado, session)
+        crear_excel(resultado, session, rutaCarpeta)
 
         return True
 
     except Exception as e:
         print(f"Error en proceso: {e}")
-        return False """
+        return False
 

@@ -14,9 +14,6 @@ from kobo_api import proceso,obtener_uid, crear_sesion, obtener_formulario, proc
 #def actualizarDatos():
 
 
-
-
-
 def centrar_ventana(ventana, ancho, alto):
     # 1. Obtener las dimensiones de la pantalla
     pantalla_ancho = ventana.winfo_screenwidth()
@@ -75,8 +72,8 @@ canvas.create_text(
 )
 
 canvas.create_text(
-    270,
-    110,
+    280,
+    120,
     text="Selecciona una carpeta ya creada que desee actualizar (solo la carpeta del semestre)",
     fill="navy",
     font=("Arial", 10, )
@@ -93,24 +90,46 @@ def direccionArchivoExcel():
 def actualizar_archivo():
     carpeta = direccionArchivoExcel()
     if(carpeta):
-        print(carpeta)
+        iniciar_proceso(carpeta)
     else:
         print("eror al conseguir direccion")
 
+
 boton = tk.Button(
     ventana,
-    text="Aceptar",
+    text="Seleccionar Carpeta",
     command=actualizar_archivo
 )
 
 canvas.create_window(
-    300,          # x
-    150,          # y
+    120,          # x
+    160,          # y
     window=boton
 )
 
+canvas.create_text(
+    200,
+    180,
+    text="rutaCarpeta",
+    fill="navy",
+    font=("Arial", 10 )
+)
 
-def iniciar_proceso(ventana=ventana):
+
+btn_actualizar = tk.Button(
+    ventana,
+    text="Actualizar",
+    command=actualizar_archivo
+)
+
+canvas.create_window(
+    400,          # x
+    180,          # y
+    window=btn_actualizar 
+)
+
+
+def iniciar_proceso(rutaCarpeta, ventana=ventana ):
     # Crear ventana de progreso
     ventanaBarra = tk.Toplevel(ventana)
     ventanaBarra.title("Procesando")
@@ -134,10 +153,15 @@ def iniciar_proceso(ventana=ventana):
 
     def tarea():
         try:
-            proceso()
+           resultadoProceso=proceso(rutaCarpeta)
         finally:
             # Volver al hilo principal para cerrar la ventanaBarra
-            ventanaBarra.after(0, finalizar)
+            if(resultadoProceso):
+                ventanaBarra.after(0, finalizar)
+            else:
+                ventanaBarra.after(0, lambda: lbl_estado.config(
+                    text="❌ Ocurrió un error durante el proceso."
+                ))
 
     def finalizar():
         barra.stop()
@@ -155,7 +179,7 @@ def iniciar_proceso(ventana=ventana):
     threading.Thread(target=tarea, daemon=True).start()
 
 
-btn_derecho = tk.Button(
+btn_crear = tk.Button(
     ventana,
     text="Crear Excel",
     width=15,
@@ -163,7 +187,11 @@ btn_derecho = tk.Button(
     #command=direccionArchivoExcel
     
 )
-btn_derecho.pack(side="bottom", padx=20, pady=20) 
+canvas.create_window(
+    150,          # x
+    300,          # y
+    window= btn_crear
+)
 
 ventana.resizable(False, False)
 ventana.mainloop()
