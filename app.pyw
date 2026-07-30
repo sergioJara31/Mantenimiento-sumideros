@@ -6,14 +6,6 @@ import time
 
 from kobo_api import proceso,obtener_uid, crear_sesion, obtener_formulario, procesar_datos, descargar_fotos, crear_excel, insertar_imagenes 
 
-""" def iniciar_descarga():
-
-    hilo = threading.Thread(target=proceso)
-    hilo.start() """
-
-#def actualizarDatos():
-
-
 def centrar_ventana(ventana, ancho, alto):
     # 1. Obtener las dimensiones de la pantalla
     pantalla_ancho = ventana.winfo_screenwidth()
@@ -94,27 +86,6 @@ def crearExcel(crearArchivo):
         print("eror al conseguir direccion")
 
 
-""" boton = tk.Button(
-    ventana,
-    text="Seleccionar Carpeta",
-    command=lambda: crearExcel(True)
-)
-
-canvas.create_window(
-    120,          # x
-    160,          # y
-    window=boton
-) """
-
-""" canvas.create_text(
-    200,
-    180,
-    text="rutaCarpeta",
-    fill="navy",
-    font=("Arial", 10 )
-) """
-
-
 btn_actualizar = tk.Button(
     ventana,
     text="Actualizar",
@@ -132,11 +103,12 @@ canvas.create_window(
 def iniciar_proceso(rutaCarpeta, crearArchivo, ventana=ventana ):
     # Crear ventana de progreso
     ventanaBarra = tk.Toplevel(ventana)
+    ventanaBarra.protocol("WM_DELETE_WINDOW", lambda: None)
     ventanaBarra.title("Procesando")
     centrar_ventana(ventanaBarra, 350, 100)
     ventanaBarra.resizable(False, False)
 
-    lbl_estado = ttk.Label(
+    lbl_estado = tk.Label(
         ventanaBarra,
         text="Generando el archivo de Excel...\n"
              "Este proceso puede tardar unos minutos, por favor espere."
@@ -157,18 +129,17 @@ def iniciar_proceso(rutaCarpeta, crearArchivo, ventana=ventana ):
         finally:
             # Volver al hilo principal para cerrar la ventanaBarra
             if(resultadoProceso):
-                ventanaBarra.after(0, finalizar)
+                ventanaBarra.after(0, lambda:finalizar(True))
             else:
-                ventanaBarra.after(0, lambda: lbl_estado.config(
-                    text="❌ Ocurrió un error durante el proceso."
-                ))
+                ventanaBarra.after(0, lambda:finalizar(False))
 
-    def finalizar():
+    def finalizar(resultado):
         barra.stop()
         barra.pack_forget()
-        lbl_estado.config(
-            text="✅ Proceso finalizado correctamente."
-        )
+        if resultado:
+            lbl_estado.config(text="Proceso finalizado correctamente.", fg="green")
+        else:
+             lbl_estado.config(text="Ha ocurrido un error por favor vuelva a intertarlo", fg="red")
     
     ttk.Button(
             ventanaBarra, 
