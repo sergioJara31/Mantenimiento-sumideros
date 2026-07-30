@@ -140,7 +140,6 @@ def crear_excel(resultado_formulario, session, carpetaSeleccionada, crearArchivo
     # --------- DIFERENCIA ENTRE CREAR Y ACTUALIZAR ---------
 
     if carpeta_semestre != os.path.basename(carpetaSeleccionada) and crearArchivo:
-        print("Creando proyecto nuevo")
         rutaCarpeta = os.path.join(carpetaSeleccionada, carpeta_semestre)
         carpeta_fotos = os.path.join(rutaCarpeta, "Fotos")
         archivo_excel = os.path.join(rutaCarpeta, "Mantenimiento.xlsx")
@@ -163,7 +162,6 @@ def crear_excel(resultado_formulario, session, carpetaSeleccionada, crearArchivo
         insertar_imagenes(archivo_excel,resultado_formulario,carpeta_fotos)
 
     else:
-        print("Actualizando proyecto existente")
         archivo_excel = os.path.join(carpetaSeleccionada, "Mantenimiento.xlsx")
         carpeta_fotos = os.path.join(carpetaSeleccionada, "Fotos")
         wb = load_workbook(archivo_excel)
@@ -182,14 +180,11 @@ def crear_excel(resultado_formulario, session, carpetaSeleccionada, crearArchivo
             else:
 
                 ws = wb[nombre_hoja]
-                print(ws)
                 ids_existentes = set()
-                print(ids_existentes)
                 # Desde la fila 7 porque tu formato comienza allí
                 for fila in ws.iter_rows(min_row=7, values_only=True):
 
                     id_elemento = fila[0]
-                    print("id elemnto"+id_elemento)
                     if id_elemento is not None:
                         ids_existentes.add(str(id_elemento))
 

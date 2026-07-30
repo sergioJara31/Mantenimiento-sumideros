@@ -36,7 +36,7 @@ ventana.title("Descarga de Imagenes y Creación de Excel")
 centrar_ventana(ventana, 600, 400) 
 
 imagen = Image.open("logo.jpeg").convert("RGBA")
-
+ventana.iconbitmap("logo.ico")
 # Ajustarla al tamaño de la ventana
 imagen = imagen.resize((600, 400), Image.Resampling.LANCZOS)
 imagen.putalpha(60)
@@ -82,7 +82,6 @@ canvas.create_text(
 def direccionArchivoExcel():
     carpeta_destino = filedialog.askdirectory(title="Seleccionar Carpeta para Guardar el Excel")
     if carpeta_destino:
-        print(f"Carpeta seleccionada: {carpeta_destino}")
         return carpeta_destino
     else:
         return ""
@@ -107,23 +106,24 @@ canvas.create_window(
     window=boton
 ) """
 
-canvas.create_text(
+""" canvas.create_text(
     200,
     180,
     text="rutaCarpeta",
     fill="navy",
     font=("Arial", 10 )
-)
+) """
 
 
 btn_actualizar = tk.Button(
     ventana,
     text="Actualizar",
+    width=15,
     command=lambda: crearExcel(False)
 )
 
 canvas.create_window(
-    400,          # x
+    120,          # x
     180,          # y
     window=btn_actualizar 
 )
@@ -179,6 +179,24 @@ def iniciar_proceso(rutaCarpeta, crearArchivo, ventana=ventana ):
     threading.Thread(target=tarea, daemon=True).start()
 
 
+
+canvas.create_text(
+    120,
+    220,
+    text="Crear nueva carpeta",
+    fill="blue",
+    font=("Arial", 14)
+)
+
+canvas.create_text(
+    280,
+    250,
+    text="Selecciona una carpeta donde se creara el documento de excel y la carpeta de fotos",
+    fill="navy",
+    font=("Arial", 10, )
+)
+
+
 btn_crear = tk.Button(
     ventana,
     text="Crear Excel",
@@ -188,7 +206,7 @@ btn_crear = tk.Button(
     
 )
 canvas.create_window(
-    150,          # x
+    120,          # x
     300,          # y
     window= btn_crear
 )
