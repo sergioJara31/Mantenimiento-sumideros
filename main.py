@@ -171,7 +171,7 @@ def iniciar_proceso(rutaCarpeta, ventana=ventana ):
         )
     
     ttk.Button(
-            ventanaBarra,
+            ventanaBarra, 
             text="Cerrar",
             command=ventanaBarra.destroy
         ).pack(pady=10)

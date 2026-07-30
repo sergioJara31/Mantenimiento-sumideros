@@ -48,7 +48,6 @@ def obtener_uid(session):
 
     return datos["results"][0]["uid"]
 
-
 def obtener_formulario(session, uid):
     url = f"https://kf.kobotoolbox.org/api/v2/assets/{uid}/data/"
 
@@ -57,7 +56,6 @@ def obtener_formulario(session, uid):
 
     return response.json()
     
-
 def procesar_datos(formulario):
     sumideros=[]
     sumideros_sin_id = []
@@ -102,7 +100,6 @@ def procesar_datos(formulario):
    
     return resultado
 
-
 def normalizar_barrio(barrio):
     if not barrio:
         return ""
@@ -116,7 +113,7 @@ def normalizar_barrio(barrio):
 
 def crear_excel(resultado_formulario, session, carpetaSeleccionada):
     df = pd.DataFrame(resultado_formulario)
-    archivo_excel = "Mantenimiento.xlsx"
+
     columnas = [
         "ID_ELEMENTO",
         "SUBTIPO",
@@ -134,37 +131,52 @@ def crear_excel(resultado_formulario, session, carpetaSeleccionada):
     ]
 
     df = df[columnas]
-    
-
     año = datetime.now().year
     mes = datetime.now().month
-
     periodo = 1 if mes <= 6 else 2
 
     carpeta_semestre = f"Mantenimiento_Sumideros_{año}_{periodo}"
 
-    rutaCarpeta= os.path.join(carpetaSeleccionada, carpeta_semestre)
+    # --------- DIFERENCIA ENTRE CREAR Y ACTUALIZAR ---------
 
-    carpeta_fotos = os.path.join(rutaCarpeta, "Fotos")
-    os.makedirs(carpeta_fotos, exist_ok=True)
+    if carpeta_semestre != os.path.basename(carpetaSeleccionada):
+        print("Creando proyecto nuevo")
+        rutaCarpeta = os.path.join(carpetaSeleccionada, carpeta_semestre)
+        carpeta_fotos = os.path.join(rutaCarpeta, "Fotos")
+        archivo_excel = os.path.join(rutaCarpeta, "Mantenimiento.xlsx")
+        os.makedirs(carpeta_fotos, exist_ok=True)
 
-    archivo_excel = os.path.join(rutaCarpeta, "Mantenimiento.xlsx")
-    with pd.ExcelWriter(
-    archivo_excel,
-    engine="openpyxl") as writer:
+        with pd.ExcelWriter(
+            archivo_excel,
+            engine="openpyxl"
+        ) as writer:
 
-        for barrio, grupo in df.groupby("BARRIO"):
-        # Excel no permite nombres de hoja mayores a 31 caracteres
-            nombre_hoja = str(barrio)[:31]
-            grupo.to_excel(writer, sheet_name=nombre_hoja, index=False)
+            for barrio, grupo in df.groupby("BARRIO"):
+                nombre_hoja = str(barrio)[:31]
+                grupo.to_excel(
+                    writer,
+                    sheet_name=nombre_hoja,
+                    index=False
+                )
+        formatear_excel(archivo_excel)
+        descargar_fotos(resultado_formulario,session,carpeta_fotos)
+        insertar_imagenes(archivo_excel,resultado_formulario,carpeta_fotos)
 
-    formatear_excel(archivo_excel)
-    descargar_fotos(resultado_formulario, session, carpeta_fotos)
-    insertar_imagenes(archivo_excel, resultado_formulario, carpeta_fotos)
-    
+    else:
+        print("Actualizando proyecto existente")
+        archivo_excel = os.path.join(carpetaSeleccionada, "Mantenimiento.xlsx")
+        carpeta_fotos = os.path.join(carpetaSeleccionada, "Fotos")
+        descargar_fotos(
+            resultado_formulario,
+            session,
+            carpeta_fotos
+        )
 
-    return df, archivo_excel, columnas
-
+        insertar_imagenes(
+            archivo_excel,
+            resultado_formulario,
+            carpeta_fotos
+        )
 
 def descargar_fotos(resultado_formulario, session, carpeta_fotos):
     for registro in resultado_formulario:
@@ -204,7 +216,6 @@ def descargar_fotos(resultado_formulario, session, carpeta_fotos):
                 except Exception as e:
                     print(f"Error al procesar la URL {url}: {e}")
    
-
 def formatear_excel(archivo_excel):
 
     wb = load_workbook(archivo_excel)
@@ -352,7 +363,6 @@ def insertar_imagenes(archivo_excel, resultado_formulario, carpeta_fotos):
         ajustar_anchos_columnas(ws, col_antes, col_despues)
 
     wb.save(archivo_excel)
-
 
 def agrupar_por_barrio(resultado_formulario):
 
