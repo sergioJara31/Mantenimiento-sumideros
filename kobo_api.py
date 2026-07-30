@@ -111,7 +111,7 @@ def normalizar_barrio(barrio):
         if unicodedata.category(c) != "Mn"
     )
 
-def crear_excel(resultado_formulario, session, carpetaSeleccionada):
+def crear_excel(resultado_formulario, session, carpetaSeleccionada, crearArchivo):
     df = pd.DataFrame(resultado_formulario)
 
     columnas = [
@@ -139,7 +139,7 @@ def crear_excel(resultado_formulario, session, carpetaSeleccionada):
 
     # --------- DIFERENCIA ENTRE CREAR Y ACTUALIZAR ---------
 
-    if carpeta_semestre != os.path.basename(carpetaSeleccionada):
+    if carpeta_semestre != os.path.basename(carpetaSeleccionada) and crearArchivo:
         print("Creando proyecto nuevo")
         rutaCarpeta = os.path.join(carpetaSeleccionada, carpeta_semestre)
         carpeta_fotos = os.path.join(rutaCarpeta, "Fotos")
@@ -158,7 +158,7 @@ def crear_excel(resultado_formulario, session, carpetaSeleccionada):
                     sheet_name=nombre_hoja,
                     index=False
                 )
-        formatear_excel(archivo_excel)
+        formatear_excel(archivo_excel, crearArchivo)
         descargar_fotos(resultado_formulario,session,carpeta_fotos)
         insertar_imagenes(archivo_excel,resultado_formulario,carpeta_fotos)
 
@@ -166,17 +166,49 @@ def crear_excel(resultado_formulario, session, carpetaSeleccionada):
         print("Actualizando proyecto existente")
         archivo_excel = os.path.join(carpetaSeleccionada, "Mantenimiento.xlsx")
         carpeta_fotos = os.path.join(carpetaSeleccionada, "Fotos")
-        descargar_fotos(
-            resultado_formulario,
-            session,
-            carpeta_fotos
-        )
+        wb = load_workbook(archivo_excel)
+        for barrio, grupo in df.groupby("BARRIO"):
+            
+            nombre_hoja = str(barrio)[:31]
 
-        insertar_imagenes(
-            archivo_excel,
-            resultado_formulario,
-            carpeta_fotos
-        )
+            # Si la hoja no existe, crearla
+            if nombre_hoja not in wb.sheetnames:
+
+                ws = wb.create_sheet(nombre_hoja)
+                ws.append(list(df.columns))
+
+                ids_existentes = set()
+
+            else:
+
+                ws = wb[nombre_hoja]
+                print(ws)
+                ids_existentes = set()
+                print(ids_existentes)
+                # Desde la fila 7 porque tu formato comienza allí
+                for fila in ws.iter_rows(min_row=7, values_only=True):
+
+                    id_elemento = fila[0]
+                    print("id elemnto"+id_elemento)
+                    if id_elemento is not None:
+                        ids_existentes.add(str(id_elemento))
+
+            # Buscar la siguiente fila libre
+            fila_destino = ws.max_row + 1
+
+            for _, registro in grupo.iterrows():
+
+                id_actual = str(registro["ID_ELEMENTO"])
+
+                if id_actual not in ids_existentes:
+                    for columna, valor in enumerate(registro.tolist(), start=1):
+                        ws.cell(row=fila_destino, column=columna).value = valor
+
+                    fila_destino += 1
+        wb.save(archivo_excel)
+        formatear_excel(archivo_excel, False)
+        descargar_fotos(resultado_formulario,session,carpeta_fotos)
+        insertar_imagenes(archivo_excel,resultado_formulario,carpeta_fotos)
 
 def descargar_fotos(resultado_formulario, session, carpeta_fotos):
     for registro in resultado_formulario:
@@ -216,60 +248,60 @@ def descargar_fotos(resultado_formulario, session, carpeta_fotos):
                 except Exception as e:
                     print(f"Error al procesar la URL {url}: {e}")
    
-def formatear_excel(archivo_excel):
+def formatear_excel(archivo_excel, nuevoExcel):
 
     wb = load_workbook(archivo_excel)
 
     for ws in wb.worksheets:
+        if nuevoExcel:
+            # Insertar espacio superior para encabezado
+            ws.insert_rows(1, amount=5)
+            ws.insert_cols(14, amount=2)
+            ws.cell(row=6, column=14).value = "Foto antes"
+            ws.cell(row=6, column=15).value = "Foto después"
 
-        # Insertar espacio superior para encabezado
-        ws.insert_rows(1, amount=5)
-        ws.insert_cols(14, amount=2)
-        ws.cell(row=6, column=14).value = "Foto antes"
-        ws.cell(row=6, column=15).value = "Foto después"
-
-        # Título principal
-        ws.merge_cells("F2:J2")
-        ws["F2"] = "FORMATO LIMPIEZA DE SUMIDEROS - MANTENIMIENTO"
-        ws["F2"].font = Font(
-            bold=True,
-            size=12,
-            color="1F1F1F"
-        )
-        ws["F2"].alignment = Alignment(
-            horizontal="center"
-        )
-
-        # Contrato
-        ws.merge_cells("F3:J3")
-        ws["F3"] = "CONTRATO: 2026"
-        ws["F3"].font = Font(
-            bold=True
-        )
-
-        # Contratista
-        ws.merge_cells("F4:J4")
-        ws["F4"] = "CONTRATISTA: CONSTRUCTORA GAF SAS"
-        ws["F4"].font = Font(
-            bold=True
-        )
-        # Encabezado tabla
-        relleno = PatternFill(
-            "solid",
-            fgColor="C6E0B4"
-        )
-
-        fuente = Font(
-            bold=True,
-            color="006100"
-        )
-        for cell in ws[6]:
-            cell.fill = relleno
-            cell.font = fuente
-            cell.alignment = Alignment(
-                horizontal="center",
-                vertical="center",  
+            # Título principal
+            ws.merge_cells("F2:J2")
+            ws["F2"] = "FORMATO LIMPIEZA DE SUMIDEROS - MANTENIMIENTO"
+            ws["F2"].font = Font(
+                bold=True,
+                size=12,
+                color="1F1F1F"
             )
+            ws["F2"].alignment = Alignment(
+                horizontal="center"
+            )
+
+            # Contrato
+            ws.merge_cells("F3:J3")
+            ws["F3"] = "CONTRATO: 2026"
+            ws["F3"].font = Font(
+                bold=True
+            )
+
+            # Contratista
+            ws.merge_cells("F4:J4")
+            ws["F4"] = "CONTRATISTA: CONSTRUCTORA GAF SAS"
+            ws["F4"].font = Font(
+                bold=True
+            )
+            # Encabezado tabla
+            relleno = PatternFill(
+                "solid",
+                fgColor="C6E0B4"
+            )
+
+            fuente = Font(
+                bold=True,
+                color="006100"
+            )
+            for cell in ws[6]:
+                cell.fill = relleno
+                cell.font = fuente
+                cell.alignment = Alignment(
+                    horizontal="center",
+                    vertical="center",  
+                )
 
         borde = Border(
             left=Side(style="thin"),
@@ -277,7 +309,6 @@ def formatear_excel(archivo_excel):
             top=Side(style="thin"),
             bottom=Side(style="thin")
         )
-
         # Aplicar desde A6 hasta O(última fila)
         for fila in ws.iter_rows(min_row=6, max_row=ws.max_row, min_col=1, max_col=15):
 
@@ -324,15 +355,6 @@ def formatear_excel(archivo_excel):
                     horizontal="center",
                     vertical="center"
                 )
-
-
-        # Congelar encabezado
-
-        """ ws.freeze_panes="A7" """
-
-
-        # Filtro
-
         ws.auto_filter.ref = f"A6:M6"
 
     wb.save(archivo_excel)
@@ -504,7 +526,7 @@ def ajustar_anchos_columnas(
 
 
 
-def proceso(rutaCarpeta):
+def proceso(rutaCarpeta, crearArchivo):
     try:
         session = crear_sesion()
         uid = obtener_uid(session)
@@ -512,8 +534,7 @@ def proceso(rutaCarpeta):
         datos = obtener_formulario(session, uid)
 
         resultado = procesar_datos(datos)
-
-        crear_excel(resultado, session, rutaCarpeta)
+        crear_excel(resultado, session, rutaCarpeta, crearArchivo)
 
         return True
 

@@ -87,25 +87,25 @@ def direccionArchivoExcel():
     else:
         return ""
     
-def actualizar_archivo():
+def crearExcel(crearArchivo):
     carpeta = direccionArchivoExcel()
     if(carpeta):
-        iniciar_proceso(carpeta)
+        iniciar_proceso(carpeta, crearArchivo)
     else:
         print("eror al conseguir direccion")
 
 
-boton = tk.Button(
+""" boton = tk.Button(
     ventana,
     text="Seleccionar Carpeta",
-    command=actualizar_archivo
+    command=lambda: crearExcel(True)
 )
 
 canvas.create_window(
     120,          # x
     160,          # y
     window=boton
-)
+) """
 
 canvas.create_text(
     200,
@@ -119,7 +119,7 @@ canvas.create_text(
 btn_actualizar = tk.Button(
     ventana,
     text="Actualizar",
-    command=actualizar_archivo
+    command=lambda: crearExcel(False)
 )
 
 canvas.create_window(
@@ -129,7 +129,7 @@ canvas.create_window(
 )
 
 
-def iniciar_proceso(rutaCarpeta, ventana=ventana ):
+def iniciar_proceso(rutaCarpeta, crearArchivo, ventana=ventana ):
     # Crear ventana de progreso
     ventanaBarra = tk.Toplevel(ventana)
     ventanaBarra.title("Procesando")
@@ -153,7 +153,7 @@ def iniciar_proceso(rutaCarpeta, ventana=ventana ):
 
     def tarea():
         try:
-           resultadoProceso=proceso(rutaCarpeta)
+           resultadoProceso=proceso(rutaCarpeta, crearArchivo)
         finally:
             # Volver al hilo principal para cerrar la ventanaBarra
             if(resultadoProceso):
@@ -183,7 +183,7 @@ btn_crear = tk.Button(
     ventana,
     text="Crear Excel",
     width=15,
-    command=iniciar_proceso
+    command=lambda: crearExcel(True)
     #command=direccionArchivoExcel
     
 )
