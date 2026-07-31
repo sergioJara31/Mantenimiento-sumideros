@@ -1,29 +1,33 @@
 import os
-import pandas as pd
-import requests
 import sys
 import unicodedata
-from openpyxl.drawing.image import Image as OpenpyxlImage
-from PIL import Image as PILImage
-from dotenv import load_dotenv
-from openpyxl import load_workbook
-from datetime import datetime
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-from openpyxl.utils import get_column_letter
-from openpyxl.drawing.image import Image
 from collections import defaultdict
+from datetime import datetime
+
+import pandas as pd
+import requests
+from dotenv import load_dotenv
+from PIL import Image as PILImage
+
+from openpyxl import load_workbook
+from openpyxl.drawing.image import Image
+from openpyxl.drawing.image import Image as OpenpyxlImage
 from openpyxl.drawing.spreadsheet_drawing import (
     AnchorMarker,
-    OneCellAnchor
+    OneCellAnchor,
 )
-from openpyxl.utils.units import pixels_to_EMU
 from openpyxl.drawing.xdr import XDRPositiveSize2D
+from openpyxl.styles import (
+    Alignment,
+    Border,
+    Font,
+    PatternFill,
+    Side,
+)
+from openpyxl.utils import get_column_letter
+from openpyxl.utils.units import pixels_to_EMU
+
 load_dotenv()
-
-
-import os
-import requests
-
 def crear_sesion():
     token = os.getenv("APIKEY")
 
@@ -307,7 +311,7 @@ def formatear_excel(archivo_excel, nuevoExcel):
         # Aplicar desde A6 hasta O(última fila)
         for fila in ws.iter_rows(min_row=6, max_row=ws.max_row, min_col=1, max_col=15):
 
-            ws.row_dimensions[fila[0].row].height = 140
+            ws.row_dimensions[fila[0].row].height = 110
             for celda in fila:
                 celda.border = borde
                 celda.alignment = Alignment(
