@@ -1,8 +1,10 @@
 import os
 import sys
+import traceback
 import unicodedata
 from collections import defaultdict
 from datetime import datetime
+from urllib import response
 
 import pandas as pd
 import requests
@@ -27,7 +29,10 @@ from openpyxl.styles import (
 from openpyxl.utils import get_column_letter
 from openpyxl.utils.units import pixels_to_EMU
 
-load_dotenv()
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ENV_PATH = os.path.join(BASE_DIR, ".env")
+
+load_dotenv(ENV_PATH)
 def crear_sesion():
     token = os.getenv("APIKEY")
 
@@ -52,18 +57,38 @@ def obtener_uid(session):
 
     return datos["results"][0]["uid"]
 
-def obtener_formulario(session, uid):
+""" def obtener_formulario(session, uid):
     url = f"https://kf.kobotoolbox.org/api/v2/assets/{uid}/data/"
 
-    response = session.get(url)
-    response.raise_for_status()
+    resultados = []
 
+    while url:
+        response = session.get(url)
+        response.raise_for_status()
+
+        data = response.json()
+        resultados.extend(data["results"])
+
+        # URL de la siguiente página (None cuando ya no hay más)
+        url = data["next"]
+    return resultados
+
+
+ """
+
+def obtener_formulario(session, uid): 
+    url = f"https://kf.kobotoolbox.org/api/v2/assets/{uid}/data/?limit=200" 
+    response = session.get(url) 
+    response.raise_for_status() 
     return response.json()
+
+
+
     
 def procesar_datos(formulario):
     sumideros=[]
     sumideros_sin_id = []
-    
+    #for sumidero in formulario:
     for sumidero in formulario["results"]:
         foto_antes = ""
         foto_despues = ""
@@ -76,18 +101,18 @@ def procesar_datos(formulario):
                 foto_despues = adj.get("download_url", "")  
         registro = {
             "ID_ELEMENTO": (
-                f"{(sumidero.get('ID') if sumidero.get('ID') is not None else sumidero.get('ID_sumidero'))}s"
+                f"{(sumidero.get('ID') if sumidero.get('ID') is not None else sumidero.get('ID_sumidero'))}S"
                 if (sumidero.get('ID') if sumidero.get('ID') is not None else sumidero.get('ID_sumidero')) is not None
                 else ""
             ),
-            "SUBTIPO": sumidero.get("SUBTIPO").upper() if sumidero.get("SUBTIPO") else "",
+            "SUBTIPO": sumidero.get("SUBTIPO").upper().replace("SIF_N", "SIFÓN") if sumidero.get("SUBTIPO") else "",
             "BARRIO": normalizar_barrio(sumidero.get("BARRIO")),            
             "DIRECCIÓN": sumidero.get("DIRECCI_N").upper() if sumidero.get("DIRECCI_N") else "",
             "ESTADO": sumidero.get("ESTADO").upper() if sumidero.get("ESTADO") else "",
-            "NUMERO REJAS": sumidero.get("NUMERO_DE_REJAS").upper() if sumidero.get("NUMERO_DE_REJAS") else "",
-            "PROFUNDIDAD": sumidero.get("PROFUNDIDAD"),
+            "NUMERO REJAS": float(sumidero.get("NUMERO_DE_REJAS", "0").replace(",", ".")) if sumidero.get("NUMERO_DE_REJAS") else "",
+            "PROFUNDIDAD": float(sumidero.get("PROFUNDIDAD", "0").replace(",", ".")),
             "MATERIAL TUBO": sumidero.get("MATERIAL").replace("_", " ").upper() if sumidero.get("MATERIAL") else "",
-            "DIAMETRO TUBO": sumidero.get("DIAMETRO_TUBO").upper() if sumidero.get("DIAMETRO_TUBO") else "",
+            "DIAMETRO TUBO": float(sumidero.get("DIAMETRO_TUBO", "0").replace(",", ".")) if sumidero.get("DIAMETRO_TUBO") else "",
             "ENTREGA": sumidero.get("ENTREGA").upper() if sumidero.get("ENTREGA") else "",
             "OBSERVACIONES": sumidero.get("OBSERVACIONES", "").upper() if sumidero.get("OBSERVACIONES") else "",
             "FECHA LIMPIEZA": sumidero.get("today").upper() if sumidero.get("today") else "",
@@ -101,7 +126,7 @@ def procesar_datos(formulario):
             sumideros_sin_id.append(registro)
         
     resultado= sumideros + sumideros_sin_id
-   
+
     return resultado
 
 def normalizar_barrio(barrio):
@@ -140,10 +165,9 @@ def crear_excel(resultado_formulario, session, carpetaSeleccionada, crearArchivo
     periodo = 1 if mes <= 6 else 2
 
     carpeta_semestre = f"Mantenimiento_Sumideros_{año}_{periodo}"
-
+    listaBarrios=[]
     # --------- DIFERENCIA ENTRE CREAR Y ACTUALIZAR ---------
-
-    if carpeta_semestre != os.path.basename(carpetaSeleccionada) and crearArchivo:
+    if carpeta_semestre[0:23] != os.path.basename(carpetaSeleccionada)[0:23] and crearArchivo:
         rutaCarpeta = os.path.join(carpetaSeleccionada, carpeta_semestre)
         carpeta_fotos = os.path.join(rutaCarpeta, "Fotos")
         archivo_excel = os.path.join(rutaCarpeta, "Mantenimiento.xlsx")
@@ -156,33 +180,31 @@ def crear_excel(resultado_formulario, session, carpetaSeleccionada, crearArchivo
 
             for barrio, grupo in df.groupby("BARRIO"):
                 nombre_hoja = str(barrio)[:31]
+                listaBarrios.append(nombre_hoja)
                 grupo.to_excel(
                     writer,
                     sheet_name=nombre_hoja,
                     index=False
                 )
-        formatear_excel(archivo_excel, crearArchivo)
+        formatear_hoja(archivo_excel, listaBarrios)
+        formatear_excel(archivo_excel)
         descargar_fotos(resultado_formulario,session,carpeta_fotos)
         insertar_imagenes(archivo_excel,resultado_formulario,carpeta_fotos)
 
-    else:
+    elif not crearArchivo:
         archivo_excel = os.path.join(carpetaSeleccionada, "Mantenimiento.xlsx")
         carpeta_fotos = os.path.join(carpetaSeleccionada, "Fotos")
         wb = load_workbook(archivo_excel)
-        for barrio, grupo in df.groupby("BARRIO"):
-            
-            nombre_hoja = str(barrio)[:31]
 
+        for barrio, grupo in df.groupby("BARRIO"): 
+            nombre_hoja = str(barrio)[:31]
             # Si la hoja no existe, crearla
             if nombre_hoja not in wb.sheetnames:
-
                 ws = wb.create_sheet(nombre_hoja)
                 ws.append(list(df.columns))
-
                 ids_existentes = set()
-
+                listaBarrios.append(nombre_hoja)
             else:
-
                 ws = wb[nombre_hoja]
                 ids_existentes = set()
                 # Desde la fila 7 porque tu formato comienza allí
@@ -192,6 +214,7 @@ def crear_excel(resultado_formulario, session, carpetaSeleccionada, crearArchivo
                     if id_elemento is not None:
                         ids_existentes.add(str(id_elemento))
 
+            
             # Buscar la siguiente fila libre
             fila_destino = ws.max_row + 1
 
@@ -205,7 +228,8 @@ def crear_excel(resultado_formulario, session, carpetaSeleccionada, crearArchivo
 
                     fila_destino += 1
         wb.save(archivo_excel)
-        formatear_excel(archivo_excel, False)
+        formatear_hoja(archivo_excel,listaBarrios)
+        formatear_excel(archivo_excel)
         descargar_fotos(resultado_formulario,session,carpeta_fotos)
         insertar_imagenes(archivo_excel,resultado_formulario,carpeta_fotos)
 
@@ -247,12 +271,13 @@ def descargar_fotos(resultado_formulario, session, carpeta_fotos):
                 except Exception as e:
                     print(f"Error al procesar la URL {url}: {e}")
    
-def formatear_excel(archivo_excel, nuevoExcel):
-
+def formatear_hoja(archivo_excel, listaBarrios):
+    print(listaBarrios)
     wb = load_workbook(archivo_excel)
-
     for ws in wb.worksheets:
-        if nuevoExcel:
+        print(ws.title)
+        if listaBarrios and ws.title in listaBarrios:
+            print(f"Formateando hoja: {ws.title}")
             # Insertar espacio superior para encabezado
             ws.insert_rows(1, amount=5)
             ws.insert_cols(14, amount=2)
@@ -300,8 +325,20 @@ def formatear_excel(archivo_excel, nuevoExcel):
                 cell.alignment = Alignment(
                     horizontal="center",
                     vertical="center",  
-                )
+                ) 
+    wb.save(archivo_excel)
 
+
+def formatear_excel(archivo_excel):
+
+    wb = load_workbook(archivo_excel)
+
+    for ws in wb.worksheets:
+        for columna in ["F", "G", "I"]:
+            for celda in ws[columna][6:]: 
+                if isinstance(celda.value, (int, float)):
+                    celda.number_format = "0.00"
+ 
         borde = Border(
             left=Side(style="thin"),
             right=Side(style="thin"),
@@ -531,7 +568,6 @@ def proceso(rutaCarpeta, crearArchivo):
         uid = obtener_uid(session)
 
         datos = obtener_formulario(session, uid)
-
         resultado = procesar_datos(datos)
         crear_excel(resultado, session, rutaCarpeta, crearArchivo)
 
@@ -540,4 +576,3 @@ def proceso(rutaCarpeta, crearArchivo):
     except Exception as e:
         print(f"Error en proceso: {e}")
         return False
-
