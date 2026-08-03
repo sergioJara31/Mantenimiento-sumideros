@@ -10,7 +10,6 @@ import pandas as pd
 import requests
 from dotenv import load_dotenv
 from PIL import Image as PILImage
-
 from openpyxl import load_workbook
 from openpyxl.drawing.image import Image
 from openpyxl.drawing.image import Image as OpenpyxlImage
@@ -26,7 +25,7 @@ from openpyxl.styles import (
     PatternFill,
     Side,
 )
-from openpyxl.utils import get_column_letter
+from openpyxl.utils import get_column_letter, column_index_from_string
 from openpyxl.utils.units import pixels_to_EMU
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -81,10 +80,7 @@ def obtener_formulario(session, uid):
     response = session.get(url) 
     response.raise_for_status() 
     return response.json()
-
-
-
-    
+  
 def procesar_datos(formulario):
     sumideros=[]
     sumideros_sin_id = []
@@ -272,12 +268,10 @@ def descargar_fotos(resultado_formulario, session, carpeta_fotos):
                     print(f"Error al procesar la URL {url}: {e}")
    
 def formatear_hoja(archivo_excel, listaBarrios):
-    print(listaBarrios)
     wb = load_workbook(archivo_excel)
     for ws in wb.worksheets:
-        print(ws.title)
         if listaBarrios and ws.title in listaBarrios:
-            print(f"Formateando hoja: {ws.title}")
+        
             # Insertar espacio superior para encabezado
             ws.insert_rows(1, amount=5)
             ws.insert_cols(14, amount=2)
@@ -347,7 +341,6 @@ def formatear_excel(archivo_excel):
         )
         # Aplicar desde A6 hasta O(última fila)
         for fila in ws.iter_rows(min_row=6, max_row=ws.max_row, min_col=1, max_col=15):
-
             ws.row_dimensions[fila[0].row].height = 110
             for celda in fila:
                 celda.border = borde
@@ -356,12 +349,10 @@ def formatear_excel(archivo_excel):
                     vertical="center"
                 )
         # Altura encabezado
-
         ws.row_dimensions[6].height = 45
         ws.row_dimensions[6].width = 55
-        
+    
         # Estado
-
         for fila in range(7, ws.max_row+1):
 
             estado = ws[f"E{fila}"]
@@ -377,13 +368,16 @@ def formatear_excel(archivo_excel):
                         "solid",
                         fgColor="FFF2CC"
                     )
-
+                    estado.font = Font( color="C76E00")
 
                 elif valor == "MALO":
 
                     estado.fill = PatternFill(
                         "solid",
                         fgColor="F4CCCC"
+                    )
+                    estado.font = Font(
+                        color="FF0000"     # Letra roja
                     )
 
 
@@ -406,17 +400,18 @@ def insertar_imagenes(archivo_excel, resultado_formulario, carpeta_fotos):
         ws = wb[str(nombre_hoja)[:31]]
 
         col_antes, col_despues = obtener_columnas_imagenes(ws)
+        
 
         for fila, registro in enumerate(registros, start=7):
-
-            insertar_imagen_fila(
-                ws,
-                fila,
-                registro,
-                carpeta_fotos,
-                col_antes,
-                col_despues
-            )
+            if not existe_imagen(ws, col_antes, col_despues, fila):
+                insertar_imagen_fila(
+                    ws,
+                    fila,
+                    registro,
+                    carpeta_fotos,
+                    col_antes,
+                    col_despues
+                )
 
         ajustar_anchos_columnas(ws, col_antes, col_despues)
 
@@ -472,7 +467,6 @@ def insertar_imagen_fila(
     col_antes,
     col_despues
 ):
-
     ruta_antes, ruta_despues = obtener_rutas_imagenes(
         registro,
         carpeta_fotos
@@ -559,8 +553,20 @@ def ajustar_anchos_columnas(
                 25
             )
 
+def existe_imagen(ws, col_antes, col_despues, fila):
+    """
+    Verifica si ya existe una imagen en la fila indicada,
+    ya sea en la columna ANTES o en la columna DESPUÉS.
+    """
+    fila_idx = fila - 1
+    for img in ws._images:
+        if img.anchor._from.row == fila_idx and (
+            img.anchor._from.col == col_antes or
+            img.anchor._from.col == col_despues
+        ):
+            return True
 
-
+    return False
 
 def proceso(rutaCarpeta, crearArchivo):
     try:
